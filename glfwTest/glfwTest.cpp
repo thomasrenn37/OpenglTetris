@@ -27,13 +27,47 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 {
 	Board* board = static_cast<Board*>(glfwGetWindowUserPointer(window));
 
-	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, true);
-
-	else if (key == GLFW_KEY_J && action == GLFW_PRESS)
+	if (action == GLFW_PRESS)
 	{
-		board->SpawnPiece();
+		if (key == GLFW_KEY_ESCAPE)
+			glfwSetWindowShouldClose(window, true);
+		else if (key == GLFW_KEY_W)
+		{
+		}
+		else if (key == GLFW_KEY_A)
+		{
+			board->SetMoveDirection(-1, 0);
+		}
+		else if (key == GLFW_KEY_S)
+		{
+			board->SetMoveDirection(0, -1);
+		}
+		else if (key == GLFW_KEY_D)
+		{
+			board->SetMoveDirection(1, 0);
+		}
 	}
+	else if (action == GLFW_RELEASE)
+	{
+		if (key == GLFW_KEY_W)
+		{
+
+		}
+		else if (key == GLFW_KEY_A)
+		{
+			board->SetMoveDirection(0, 0);
+		}
+		else if (key == GLFW_KEY_S)
+		{
+			board->SetMoveDirection(0, 0);
+		}
+		else if (key == GLFW_KEY_D)
+		{
+			board->SetMoveDirection(0, 0);
+		}
+	}
+	
+
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -147,7 +181,9 @@ int main()
 	// Main game loop
 	while (!glfwWindowShouldClose(window)) {
 		glClear(GL_COLOR_BUFFER_BIT);
-
+		
+		
+		
 		board.Render();
 
 		//* Poll for and process events *

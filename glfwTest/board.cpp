@@ -1,5 +1,7 @@
 #include "board.h"
 #include <iostream>
+#include <chrono>
+#include <cstdlib>
 
 #define GLEW_STATIC // Need to define to be able to statically link.
 #include <glew.h>
@@ -22,11 +24,14 @@ Board::Board(int width, int height)
 	m_vertices = std::vector<float>();
 	m_indices = std::vector<unsigned int>();
 
+	m_moveX = 0;
+	m_moveY = 0;
+	m_ActivePiece = false;
+
 	// Create the board of tetris.
 	this->createSides(m_LeftXCord);
 	this->createSides(m_RightXCord);
 	this->createBottom(m_LeftXCord + m_block_length);
-
 
 	/* ---------- Generate the handles to the opengl objects ------------ */
 	
@@ -73,11 +78,15 @@ Board::~Board()
 
 void Board::Render()
 {
+	Move();
 	m_shaderProg.use();
 	glUniform1i(glGetUniformLocation(m_shaderProg.program(), "blockTexture"), 0);
 	glBindVertexArray(m_vao);
 	glDrawElements(GL_TRIANGLES, numVertices(), GL_UNSIGNED_INT, 0);
 	glBindVertexArray(0);
+
+	if (!m_ActivePiece)
+		SpawnPiece();
 }
 
 void Board::createBottom(float xPos)
@@ -86,6 +95,77 @@ void Board::createBottom(float xPos)
 	{
 		CreateBlock(xPos + (i * m_block_length), -1.0f + m_block_length);
 	}
+}
+
+void Board::Move()
+{
+	if (m_currentPieceIndex == 0)
+	{
+		m_moveX = 0;
+		m_moveY = 0;
+
+		return;
+	}
+
+	// Add downwards momentum if we have elapsed past a second.
+	std::chrono::duration<float> elapsed_seconds = std::chrono::system_clock::now() - m_timer;
+	if (elapsed_seconds.count() > 1.0f)
+	{
+		m_moveY = -1.0f + m_moveY;
+		m_timer = std::chrono::system_clock::now();
+	}
+
+	// Move in the x direction if necessary.
+	if (m_moveX != 0)
+	{
+		bool illegalMove = false;
+		for (int i = m_currentPieceIndex; i < (m_vertices.size()); i += c_NUM_ELEMENTS_PER_VERT)
+		{
+			float newMove = m_vertices[i] + (m_block_length * m_moveX);
+			float val = m_RightXCord + m_block_length;
+			if (newMove < GetXPosition(0) || (abs(GetXPosition(m_numCols + 1) - newMove) < 0.00001f))
+			{
+				illegalMove = true;
+				break;
+			}
+		}
+
+		if (!illegalMove) 
+		{
+			for (int i = m_currentPieceIndex; i < (m_vertices.size()); i += c_NUM_ELEMENTS_PER_VERT)
+			{
+				m_vertices[i] += m_block_length * m_moveX;
+			}
+		}
+		m_moveX = 0;
+	}
+
+	// Move in the y direction if needed.
+	if (m_moveY != 0)
+	{
+		bool illegalMove = false;
+
+		for (int i = m_currentPieceIndex; i < (m_vertices.size()); i += c_NUM_ELEMENTS_PER_VERT)
+		{
+			m_vertices[i + 1] += m_block_length * m_moveY;
+			
+			// Check to see if the next space is the bottom.
+			if (m_vertices[i + 1] < GetYPosition(m_numRows - 1))
+			{
+				illegalMove = true;
+			}
+		}
+
+		if (illegalMove)
+		{
+			m_ActivePiece = false;
+			m_currentPieceIndex = 0;
+		}
+		
+		m_moveY = 0;
+	}
+
+	glNamedBufferData(m_bufferHandle, sizeof(float) * numVertices(), getVertexPointer(), GL_STREAM_DRAW);
 }
 
 void Board::createSides(float xPos)
@@ -140,7 +220,7 @@ void Board::CreateBlock(float xPos, float yPos)
 
 float Board::GetXPosition(int x)
 {
-	return (m_LeftXCord + m_block_length) + (x * m_block_length);
+	return (m_LeftXCord + m_block_length) + (float(x) * m_block_length);
 }
 
 float Board::GetYPosition(int y)
@@ -240,17 +320,19 @@ void Board::SpawnPiece()
 	int blockVerts = 4;
 	int numInsert = numBlocks * blockVerts * 4;
 
-	std::vector<float> newBlock(numInsert);
-	std::vector<unsigned int> newIdxs(numInsert);
-	
-	CreatePiece('Z');
-	//CreateBlock(0.f, 0.0f);
+	m_currentPieceIndex = m_vertices.size();
 
-	m_vertices.insert(m_vertices.end(), newBlock.begin(), newBlock.end());
-	//m_indices.insert(m_indices.end(), newIdxs.begin(), newIdxs.end());
+	char pieces[] = "OIJLSTZ";
+	srand(time(NULL));
+	CreatePiece(pieces[rand() % 7]);
+	
+	// Swap out the new data.
 	glNamedBufferData(m_bufferHandle, sizeof(float) * numVertices(), getVertexPointer(), GL_STREAM_DRAW);
 	glNamedBufferData(m_ebo, sizeof(unsigned int) * numIndices(), getIndexPointer(), GL_STREAM_DRAW);
 
+	m_ActivePiece = true;
+
+	static auto m_time = std::chrono::system_clock::now();
 }
 
 size_t Board::numVertices()
@@ -261,6 +343,12 @@ size_t Board::numVertices()
 size_t Board::numIndices()
 {
 	return m_indices.size();
+}
+
+void Board::SetMoveDirection(int x, int y)
+{
+	m_moveX = x;
+	m_moveY = y;
 }
 
 float* Board::getVertexPointer()
