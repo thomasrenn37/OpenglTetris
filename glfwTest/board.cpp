@@ -49,14 +49,16 @@ Board::Board(int width, int height)
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * numIndices(), getIndexPointer(), GL_STREAM_DRAW);
 
 	
-	// Enable the position data for the screen position and the texture position.
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (void*)0);
+	// Enable the position data for the screen position, texture position and color.
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * c_NUM_ELEMENTS_PER_VERT, (void*)0);
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (void*)(sizeof(float) * 2));
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * c_NUM_ELEMENTS_PER_VERT, (void*)(sizeof(float) * 2));
 	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(float) * c_NUM_ELEMENTS_PER_VERT, (void*)(sizeof(float) * 4));
+	glEnableVertexAttribArray(2);
 
 	// Generate the texture for the current context.
-	unsigned int texture = Texture::generate2DTexture("resources/tetris_block.png");
+	unsigned int texture = Texture::generate2DTexture("resources/base_tetris_block.png");
 
 
 	m_shaderProg = ShaderProgram();
@@ -93,7 +95,7 @@ void Board::createBottom(float xPos)
 {
 	for (int i = 0; i < m_numCols; i++)
 	{
-		CreateBlock(xPos + (i * m_block_length), -1.0f + m_block_length);
+		CreateBlock(xPos + (i * m_block_length), -1.0f + m_block_length, 0.5f, 0.5f, 0.5f);
 	}
 }
 
@@ -109,7 +111,7 @@ void Board::Move()
 
 	// Add downwards momentum if we have elapsed past a second.
 	std::chrono::duration<float> elapsed_seconds = std::chrono::system_clock::now() - m_timer;
-	if (elapsed_seconds.count() > 1.0f)
+	if (elapsed_seconds.count() > 0.5f)
 	{
 		m_moveY = -1.0f + m_moveY;
 		m_timer = std::chrono::system_clock::now();
@@ -172,13 +174,13 @@ void Board::createSides(float xPos)
 {
 	for (int i = 0; i < (m_numRows + 1); i++)
 	{
-		CreateBlock(xPos, 1.0f - (i * m_block_length));
+		CreateBlock(xPos, 1.0f - (i * m_block_length), 0.5f, 0.5f, 0.5f);
 	}
 }
 
-void Board::CreateBlock(float xPos, float yPos)
+void Board::CreateBlock(float xPos, float yPos, float r, float g, float b)
 {
-	unsigned int vert_idx = m_vertices.size() / 4;
+	unsigned int vert_idx = m_vertices.size() / c_NUM_ELEMENTS_PER_VERT;
 
 	// Update the Vertex Buffer
 	// Top left
@@ -186,24 +188,36 @@ void Board::CreateBlock(float xPos, float yPos)
 	m_vertices.push_back(yPos);								// y-pos
 	m_vertices.push_back(0.0f);								// s-pos
 	m_vertices.push_back(1.0f);								// t-pos
+	m_vertices.push_back(r);
+	m_vertices.push_back(g);
+	m_vertices.push_back(b);
 
 	// Top right
 	m_vertices.push_back(xPos + m_block_length);				// x-pos
 	m_vertices.push_back(yPos);								// y-pos
 	m_vertices.push_back(1.0f);								// s-pos
 	m_vertices.push_back(1.0f);								// t-pos
+	m_vertices.push_back(r);
+	m_vertices.push_back(g);
+	m_vertices.push_back(b);
 
 	// Bottom Left
 	m_vertices.push_back(xPos);								// x-pos
 	m_vertices.push_back(yPos - m_block_length);			// y-pos
 	m_vertices.push_back(0.0f);								// s-pos
 	m_vertices.push_back(0.0f);								// t-pos
+	m_vertices.push_back(r);
+	m_vertices.push_back(g);
+	m_vertices.push_back(b);
 
 	// Bottom right
 	m_vertices.push_back(xPos + m_block_length);			// x-pos
 	m_vertices.push_back(yPos - m_block_length);			// y-pos
 	m_vertices.push_back(1.0f);								// s-pos
 	m_vertices.push_back(0.0f);								// t-pos
+	m_vertices.push_back(r);
+	m_vertices.push_back(g);
+	m_vertices.push_back(b);
 
 
 	// Update the Index buffer
@@ -237,10 +251,10 @@ void Board::CreatePiece(const char piece_type)
 		float spawnStartX = GetXPosition(4);
 		float spawnStartY = GetYPosition(0);
 
-		CreateBlock(spawnStartX, spawnStartY);
-		CreateBlock(spawnStartX + m_block_length, spawnStartY);
-		CreateBlock(spawnStartX, spawnStartY - m_block_length);
-		CreateBlock(spawnStartX + m_block_length, spawnStartY - m_block_length);
+		CreateBlock(spawnStartX, spawnStartY, 1.0f, 1.0f, 0.0f);
+		CreateBlock(spawnStartX + m_block_length, spawnStartY, 1.0f, 1.0f, 0.0f);
+		CreateBlock(spawnStartX, spawnStartY - m_block_length, 1.0f, 1.0f, 0.0f);
+		CreateBlock(spawnStartX + m_block_length, spawnStartY - m_block_length, 1.0f, 1.0f, 0.0f);
 		break;
 	}
 	case 'I':
@@ -248,10 +262,10 @@ void Board::CreatePiece(const char piece_type)
 		float spawnStartX = GetXPosition(4);
 		float spawnStartY = GetYPosition(0);
 		
-		CreateBlock(spawnStartX - m_block_length, spawnStartY);
-		CreateBlock(spawnStartX, spawnStartY);
-		CreateBlock(spawnStartX + m_block_length, spawnStartY);
-		CreateBlock(spawnStartX + (2 * m_block_length), spawnStartY);
+		CreateBlock(spawnStartX - m_block_length, spawnStartY, 0.0f, 1.0f, 1.0f);
+		CreateBlock(spawnStartX, spawnStartY, 0.0f, 1.0f, 1.0f);
+		CreateBlock(spawnStartX + m_block_length, spawnStartY, 0.0f, 1.0f, 1.0f);
+		CreateBlock(spawnStartX + (2 * m_block_length), spawnStartY, 0.0f, 1.0f, 1.0f);
 		break;
 	}
 	case 'J':
@@ -259,10 +273,10 @@ void Board::CreatePiece(const char piece_type)
 		float spawnStartX = GetXPosition(4);
 		float spawnStartY = GetYPosition(1);
 		
-		CreateBlock(spawnStartX - m_block_length, spawnStartY + m_block_length);
-		CreateBlock(spawnStartX - m_block_length, spawnStartY);
-		CreateBlock(spawnStartX, spawnStartY);
-		CreateBlock(spawnStartX + m_block_length, spawnStartY);
+		CreateBlock(spawnStartX - m_block_length, spawnStartY + m_block_length, 0.0f, 0.0f, 1.0f);
+		CreateBlock(spawnStartX - m_block_length, spawnStartY, 0.0f, 0.0f, 1.0f);
+		CreateBlock(spawnStartX, spawnStartY, 0.0f, 0.0f, 1.0f);
+		CreateBlock(spawnStartX + m_block_length, spawnStartY, 0.0f, 0.0f, 1.0f);
 		break;
 	}
 	case 'L':
@@ -270,10 +284,10 @@ void Board::CreatePiece(const char piece_type)
 		float spawnStartX = GetXPosition(4);
 		float spawnStartY = GetYPosition(1);
 
-		CreateBlock(spawnStartX - m_block_length, spawnStartY);
-		CreateBlock(spawnStartX, spawnStartY);
-		CreateBlock(spawnStartX + m_block_length, spawnStartY);
-		CreateBlock(spawnStartX + m_block_length, spawnStartY + m_block_length);
+		CreateBlock(spawnStartX - m_block_length, spawnStartY, 1.0f, 0.5f, 0.0f);
+		CreateBlock(spawnStartX, spawnStartY, 1.0f, 0.5f, 0.0f);
+		CreateBlock(spawnStartX + m_block_length, spawnStartY, 1.0f, 0.5f, 0.0f);
+		CreateBlock(spawnStartX + m_block_length, spawnStartY + m_block_length, 1.0f, 0.5f, 0.0f);
 		break;
 	}
 	case 'S':
@@ -281,10 +295,10 @@ void Board::CreatePiece(const char piece_type)
 		float spawnStartX = GetXPosition(4);
 		float spawnStartY = GetYPosition(1);
 
-		CreateBlock(spawnStartX - m_block_length, spawnStartY);
-		CreateBlock(spawnStartX, spawnStartY);
-		CreateBlock(spawnStartX, spawnStartY + m_block_length);
-		CreateBlock(spawnStartX + m_block_length, spawnStartY + m_block_length);
+		CreateBlock(spawnStartX - m_block_length, spawnStartY, 0.0f, 1.0f, 0.0f);
+		CreateBlock(spawnStartX, spawnStartY, 0.0f, 1.0f, 0.0f);
+		CreateBlock(spawnStartX, spawnStartY + m_block_length, 0.0f, 1.0f, 0.0f);
+		CreateBlock(spawnStartX + m_block_length, spawnStartY + m_block_length, 0.0f, 1.0f, 0.0f);
 		break;
 	}
 	case 'T':
@@ -292,10 +306,10 @@ void Board::CreatePiece(const char piece_type)
 		float spawnStartX = GetXPosition(4);
 		float spawnStartY = GetYPosition(1);
 
-		CreateBlock(spawnStartX - m_block_length, spawnStartY);
-		CreateBlock(spawnStartX, spawnStartY);
-		CreateBlock(spawnStartX + m_block_length, spawnStartY);
-		CreateBlock(spawnStartX, spawnStartY + m_block_length);
+		CreateBlock(spawnStartX - m_block_length, spawnStartY, 0.5f, 0.0f, 0.5f);
+		CreateBlock(spawnStartX, spawnStartY, 0.5f, 0.0f, 0.5f);
+		CreateBlock(spawnStartX + m_block_length, spawnStartY, 0.5f, 0.0f, 0.5f);
+		CreateBlock(spawnStartX, spawnStartY + m_block_length, 0.5f, 0.0f, 0.5f);
 		break;
 	}
 	case 'Z':
@@ -303,10 +317,10 @@ void Board::CreatePiece(const char piece_type)
 		float spawnStartX = GetXPosition(4);
 		float spawnStartY = GetYPosition(1);
 
-		CreateBlock(spawnStartX - m_block_length, spawnStartY + m_block_length);
-		CreateBlock(spawnStartX, spawnStartY + m_block_length);
-		CreateBlock(spawnStartX, spawnStartY);
-		CreateBlock(spawnStartX + m_block_length, spawnStartY);
+		CreateBlock(spawnStartX - m_block_length, spawnStartY + m_block_length, 1.0f, 0.0f, 0.0f);
+		CreateBlock(spawnStartX, spawnStartY + m_block_length, 1.0f, 0.0f, 0.0f);
+		CreateBlock(spawnStartX, spawnStartY, 1.0f, 0.0f, 0.0f);
+		CreateBlock(spawnStartX + m_block_length, spawnStartY, 1.0f, 0.0f, 0.0f);
 		break;
 	}
 	}

@@ -18,13 +18,13 @@ public:
 
 private:
 	void createSides(float xPos);
-	void CreateBlock(float xPos, float yPos);
+	void CreateBlock(float xPos, float yPos, float r, float g, float b);
 	float GetXPosition(int x);
 	float GetYPosition(int y);
 	void CreatePiece(const char piece_type);
 	void createBottom(float xPos);
 	std::vector<float> m_vertices;
-	const unsigned int c_NUM_ELEMENTS_PER_VERT = 4;
+	const unsigned int c_NUM_ELEMENTS_PER_VERT = 7;
 	std::vector<unsigned int> m_indices;
 	int m_numRows;
 	int m_numCols;
