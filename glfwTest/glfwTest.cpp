@@ -33,6 +33,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 			glfwSetWindowShouldClose(window, true);
 		else if (key == GLFW_KEY_W)
 		{
+			board->Flip();
 		}
 		else if (key == GLFW_KEY_A)
 		{
@@ -66,8 +67,21 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 			board->SetMoveDirection(0, 0);
 		}
 	}
-	
-
+	else if (action == GLFW_REPEAT)
+	{
+		if (key == GLFW_KEY_A)
+		{
+			board->SetMoveDirection(-1, 0);
+		}
+		else if (key == GLFW_KEY_S)
+		{
+			board->SetMoveDirection(0, -1);
+		}
+		else if (key == GLFW_KEY_D)
+		{
+			board->SetMoveDirection(1, 0);
+		}
+	}
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)

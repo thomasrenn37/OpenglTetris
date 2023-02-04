@@ -27,6 +27,7 @@ Board::Board(int width, int height)
 	m_moveX = 0;
 	m_moveY = 0;
 	m_ActivePiece = false;
+	m_FlipPiece = false;
 
 	// Create the board of tetris.
 	this->createSides(m_LeftXCord);
@@ -167,6 +168,53 @@ void Board::Move()
 		m_moveY = 0;
 	}
 
+
+	// Flip the piece
+	if (m_FlipPiece && m_ActivePiece)
+	{
+		bool illegalMove = false;
+
+		// Get the second block and calculate the origin in terms of the origin
+		int start = c_NUM_ELEMENTS_PER_VERT * 4 + m_currentPieceIndex;
+
+		// Use the first 3 vertices to calculate origin, first x0 - x1, then y1 - y2
+		// Get the roation x and y origins.
+		float block_origin[2];
+		block_origin[0] = ((m_vertices[start + c_NUM_ELEMENTS_PER_VERT] - m_vertices[start])) + m_vertices[start];
+		block_origin[1] = ((m_vertices[start + 1 + c_NUM_ELEMENTS_PER_VERT] - m_vertices[start + 1])) + m_vertices[start + 1];
+
+		for (int i = m_currentPieceIndex; i < (m_vertices.size()); i += c_NUM_ELEMENTS_PER_VERT)
+		{
+			float prev_x = m_vertices[i] - block_origin[0];
+			float prev_y = m_vertices[i + 1] - block_origin[1];
+			
+			float new_x = (-prev_y  + block_origin[0]);
+			float new_y = (prev_x + block_origin[1]);
+			
+			m_vertices[i] = new_x;
+			m_vertices[i + 1] = new_y;
+			
+			// Check to see if this is a valid roation or move the piece back into the board
+			// so the player can still rotate.
+			
+			
+			// Check if out of bounds horizontally
+
+
+			// Check if it will hit any other pieces.
+			if (m_vertices[i + 1] < GetYPosition(m_numRows - 1))
+			{
+				illegalMove = true;
+			}
+		}
+
+		m_FlipPiece = false;
+	}
+	// Check if there is a full line to erase
+
+
+
+
 	glNamedBufferData(m_bufferHandle, sizeof(float) * numVertices(), getVertexPointer(), GL_STREAM_DRAW);
 }
 
@@ -193,7 +241,7 @@ void Board::CreateBlock(float xPos, float yPos, float r, float g, float b)
 	m_vertices.push_back(b);
 
 	// Top right
-	m_vertices.push_back(xPos + m_block_length);				// x-pos
+	m_vertices.push_back(xPos + m_block_length);			// x-pos
 	m_vertices.push_back(yPos);								// y-pos
 	m_vertices.push_back(1.0f);								// s-pos
 	m_vertices.push_back(1.0f);								// t-pos
@@ -363,6 +411,11 @@ void Board::SetMoveDirection(int x, int y)
 {
 	m_moveX = x;
 	m_moveY = y;
+}
+
+void Board::Flip()
+{
+	m_FlipPiece = true;
 }
 
 float* Board::getVertexPointer()

@@ -15,6 +15,7 @@ public:
 	size_t numVertices();
 	size_t numIndices();
 	void SetMoveDirection(int x, int y);
+	void Flip();
 
 private:
 	void createSides(float xPos);
@@ -32,6 +33,7 @@ private:
 	float m_LeftXCord;
 	float m_YCord;
 	bool m_ActivePiece;
+	bool m_FlipPiece;
 	std::chrono::system_clock::time_point m_timer;
 
 	ShaderProgram m_shaderProg;
