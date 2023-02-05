@@ -40,8 +40,6 @@ private:
 	unsigned int GetYIndex(float y);
 	void CreatePiece(const char piece_type);
 	void createBottom(float xPos);
-	bool ValidMoveHorizontal(float xPos, float yPos);
-	bool ValidMoveVertical(float xPos, float yPos);
 	std::vector<float> m_vertices;
 	static constexpr unsigned int c_NUM_ELEMENTS_PER_VERT = 7;
 	std::vector<unsigned int> m_indices;
@@ -50,7 +48,6 @@ private:
 	std::array<std::array< bool, m_numCols>, m_numRows> m_occupiedBlocks; // rows x columns
 	float m_RightXCord;
 	float m_LeftXCord;
-	float m_YCord;
 	bool m_ActivePiece;
 	bool m_FlipPiece;
 	std::chrono::system_clock::time_point m_timer;
@@ -60,6 +57,7 @@ private:
 	float m_block_length;
 
 	void Move();
+	void PrintOccupied();
 	unsigned int m_currentPieceIndex;
 
 	int m_moveX;

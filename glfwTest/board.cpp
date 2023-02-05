@@ -107,35 +107,7 @@ void Board::createBottom(float xPos)
 	}
 }
 
-bool Board::ValidMoveHorizontal(float xPos, float yPos)
-{
-	bool illegalMove = false;
-	for (int i = m_currentPieceIndex; i < (m_vertices.size()); i += c_NUM_ELEMENTS_PER_VERT)
-	{
-		float newMove = m_vertices[i] + (m_block_length * m_moveX);
-		float val = m_RightXCord + m_block_length;
 
-		if (newMove < GetXPosition(0) || (abs(GetXPosition(m_numCols + 1) - newMove) < 0.00001f))
-		{
-			illegalMove = true;
-			break;
-		}
-
-		if (m_occupiedBlocks[GetXIndex(xPos)][GetYIndex(yPos)])
-		{
-			illegalMove = true;
-			break;
-		}
-	}
-
-	return false;
-}
-
-bool Board::ValidMoveVertical(float xPos, float yPos)
-{
-
-	return false;
-}
 
 void Board::Move()
 {
@@ -147,14 +119,13 @@ void Board::Move()
 		return;
 	}
 
-	// Add downwards momentum if we have elapsed past a second.
+	// Add downwards momentum if we have elapsed 0.5 s.
 	std::chrono::duration<float> elapsed_seconds = std::chrono::system_clock::now() - m_timer;
 	if (elapsed_seconds.count() > 0.5f)
 	{
 		m_moveY = -1.0f + m_moveY;
 		m_timer = std::chrono::system_clock::now();
 	}
-
 
 	// Move in the x direction if necessary.
 	if (m_moveX != 0)
@@ -177,7 +148,7 @@ void Board::Move()
 
 		}
 
-		// Move the piece in the x direction if the move is legal.
+		// Move the piece in the x axis if the move is legal.
 		if (!illegalMove) 
 		{
 			for (int i = m_currentPieceIndex; i < (m_vertices.size()); i += c_NUM_ELEMENTS_PER_VERT)
@@ -211,6 +182,7 @@ void Board::Move()
 
 		if (!illegalMove)
 		{
+			// Move the piece along the y axis.
 			for (int i = m_currentPieceIndex; i < (m_vertices.size()); i += c_NUM_ELEMENTS_PER_VERT)
 			{
 				m_vertices[i + 1] += m_block_length * m_moveY;
@@ -220,10 +192,9 @@ void Board::Move()
 
 		if (illegalMove)
 		{
-			// Occupy the spaces.
+			// Occupy the spaces in the board so the player can no longer go there.
 			for (int i = m_currentPieceIndex; i < (m_vertices.size()); i += (c_NUM_ELEMENTS_PER_VERT * 4))
 			{
-				int yval = GetYIndex(m_vertices[i + 1]);
 				m_occupiedBlocks[GetYIndex(m_vertices[i + 1])][GetXIndex(m_vertices[i])] = true;
 			}
 
@@ -246,10 +217,11 @@ void Board::Move()
 		// Use the first 3 vertices to calculate origin, first x0 - x1, then y1 - y2
 		// Get the roation x and y origins.
 		float block_origin[2];
-		block_origin[0] = ((m_vertices[start + c_NUM_ELEMENTS_PER_VERT] - m_vertices[start])) + m_vertices[start];
-		block_origin[1] = ((m_vertices[start + 1 + c_NUM_ELEMENTS_PER_VERT] - m_vertices[start + 1])) + m_vertices[start + 1];
-
-		float new_verts[4 * 2 * 4] = { 0 };
+		block_origin[0] = m_vertices[start];
+		block_origin[1] = m_vertices[start + 1];
+		
+		// 4 vertieces * 2 vertex data * 4 number of blocks per piece
+		float new_verts[32] = { 0 };
 
 		int j = 0;
 		for (int i = m_currentPieceIndex; i < (m_vertices.size()); i += c_NUM_ELEMENTS_PER_VERT)
@@ -263,12 +235,17 @@ void Board::Move()
 			new_verts[j] = new_x;
 			new_verts[j + 1] = new_y;
 
-			// TODO: Check to see if this is a valid roation or move the piece back into the board
-			// so the player can still rotate.
-			
-
-
-
+			// Check to see if the player is in bounds.
+			if (GetXIndex(new_verts[j]) < 0 || GetXIndex(new_verts[j]) > (m_numCols - 1))
+			{
+				illegalMove = true;
+				break;
+			}
+			else if (GetYIndex(new_verts[j + 1]) > (m_numRows))
+			{
+				illegalMove = true;
+				break;
+			}
 			
 			// Check if it will hit any other pieces.
 			if (m_vertices[i + 1] < GetYPosition(m_numRows - 1))
@@ -277,15 +254,42 @@ void Board::Move()
 			}
 
 			j += 2;
-
 		}
 
 
 		if (!illegalMove)
 		{
-			// Sort the blocks, so the upper right corner is the first vertex.
+			// Rotation counter-clockwise messes up the drawing order of the vertices,
+			// and therefore affects how the blocks are located with the GetIndex functions.
+			// Re-arrange the blocks on how they are drawn
+			for (int block = 0; block < 4; block++)
+			{
+				float temp[2];
 
+				// Assume 0-based indexing in the new vertex array.
+				// Need to sort the new array in this new order:
+				// 1 -> 0,  3 -> 1, 0 -> 2, 2 -> 3
 
+				// 1 -> 0 
+				temp[0] = new_verts[block * 8];
+				temp[1] = new_verts[block * 8 + 1];
+				new_verts[block * 8] = new_verts[block * 8 + (2 * 1)];
+				new_verts[block * 8 + 1] = new_verts[block * 8 + (2 * 1) + 1];
+
+				// 3 -> 1
+				new_verts[block * 8 + (2 * 1)] = new_verts[block * 8 + (2 * 3)];
+				new_verts[block * 8 + (2 * 1) + 1] = new_verts[block * 8 + (2 * 3) + 1];
+
+				// 2 -> 3
+				new_verts[block * 8 + (2 * 3)] = new_verts[block * 8 + (2 * 2)];
+				new_verts[block * 8 + (2 * 3) + 1] = new_verts[block * 8 + (2 * 2) + 1];
+
+				// 0 -> 2
+				new_verts[block * 8 + (2 * 2)] = temp[0];
+				new_verts[block * 8 + (2 * 2) + 1] = temp[1];
+			}
+
+			// Assing the new vertices to the vertex buffer.
 			j = 0;
 			for (int i = m_currentPieceIndex; i < (m_vertices.size()); i += c_NUM_ELEMENTS_PER_VERT)
 			{
@@ -295,16 +299,50 @@ void Board::Move()
 			}
 		}
 
-
 		m_FlipPiece = false;
 	}
+
+
 	// Check if there is a full line to erase
+	for (int i = 0; i < m_numRows; i++)
+	{
+		bool deleteRow = true;
+		for (int j = 0; j < m_numCols; j++)
+		{
+			if (!m_occupiedBlocks[i][j])
+			{
+				deleteRow = false;
+				break;
+			}
+		}
 
-
-
+		if (deleteRow)
+		{
+			// Delete the row and shift the rest of the rows down.
+		}
+	}
 
 	glNamedBufferData(m_bufferHandle, sizeof(float) * numVertices(), getVertexPointer(), GL_STREAM_DRAW);
 }
+
+
+void Board::PrintOccupied()
+{
+	
+	for (int i = 0; i < m_numRows; i++)
+	{
+		for (int j = 0; j < m_numCols; j++)
+		{
+			std::cout << (m_occupiedBlocks[i][j] ? "   " : " x ");
+		}
+		std::cout << std::endl;
+	}
+
+	std::cout << "\n================================\n";
+	m_ActivePiece = false;
+	m_currentPieceIndex = 0;
+}
+
 
 void Board::createSides(float xPos)
 {
@@ -380,13 +418,13 @@ float Board::GetYPosition(int y)
 
 unsigned int Board::GetXIndex(float x)
 {
-	return (x - m_LeftXCord -  m_block_length) / m_block_length;
+	return static_cast<unsigned int>(round((x - m_LeftXCord -  m_block_length) / m_block_length));
 }
 
 unsigned int Board::GetYIndex(float y)
 {
 	// Need to round to not loose data from converting to unsinged int occasionally.
-	return  round((y - 1.0f) / (-m_block_length));
+	return  static_cast<unsigned>(round((y - 1.0f) / (-m_block_length)));
 }
 
 void Board::CreatePiece(const char piece_type)
