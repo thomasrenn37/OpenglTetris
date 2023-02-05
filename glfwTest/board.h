@@ -1,7 +1,21 @@
 #pragma once
 #include <vector>
+#include <array>
 #include <chrono>
 #include "shader.h"
+
+class PlayerPiece
+{
+public:
+	void Flip();
+	void Move(int x, int y);
+
+private:
+	// Coordinates in the Board
+	std::vector<unsigned int> m_XCoords;
+	std::vector<unsigned int> m_YCoords;
+};
+
 
 class Board
 {
@@ -22,13 +36,18 @@ private:
 	void CreateBlock(float xPos, float yPos, float r, float g, float b);
 	float GetXPosition(int x);
 	float GetYPosition(int y);
+	unsigned int GetXIndex(float x);
+	unsigned int GetYIndex(float y);
 	void CreatePiece(const char piece_type);
 	void createBottom(float xPos);
+	bool ValidMoveHorizontal(float xPos, float yPos);
+	bool ValidMoveVertical(float xPos, float yPos);
 	std::vector<float> m_vertices;
-	const unsigned int c_NUM_ELEMENTS_PER_VERT = 7;
+	static constexpr unsigned int c_NUM_ELEMENTS_PER_VERT = 7;
 	std::vector<unsigned int> m_indices;
-	int m_numRows;
-	int m_numCols;
+	static constexpr unsigned int m_numRows = 20;
+	static constexpr unsigned int m_numCols = 10;
+	std::array<std::array< bool, m_numCols>, m_numRows> m_occupiedBlocks; // rows x columns
 	float m_RightXCord;
 	float m_LeftXCord;
 	float m_YCord;

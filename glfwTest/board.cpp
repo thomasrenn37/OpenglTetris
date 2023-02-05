@@ -2,6 +2,7 @@
 #include <iostream>
 #include <chrono>
 #include <cstdlib>
+#include <math.h>
 
 #define GLEW_STATIC // Need to define to be able to statically link.
 #include <glew.h>
@@ -12,9 +13,15 @@
 
 Board::Board(int width, int height)
 {
-	// Playable area is 10 x 20.
-	m_numRows = 20;
-	m_numCols = 10;
+	// Set each block to be unoccupied.
+	for (int i = 0; i < m_numRows; i++)
+	{
+		for (int j = 0; j < m_numCols; j++)
+		{
+			m_occupiedBlocks[i][j] = false;
+		}
+	}
+
 
 	m_block_length = 2.f / (m_numRows + 1);
 	m_LeftXCord = -5.0f * m_block_length;
@@ -100,6 +107,36 @@ void Board::createBottom(float xPos)
 	}
 }
 
+bool Board::ValidMoveHorizontal(float xPos, float yPos)
+{
+	bool illegalMove = false;
+	for (int i = m_currentPieceIndex; i < (m_vertices.size()); i += c_NUM_ELEMENTS_PER_VERT)
+	{
+		float newMove = m_vertices[i] + (m_block_length * m_moveX);
+		float val = m_RightXCord + m_block_length;
+
+		if (newMove < GetXPosition(0) || (abs(GetXPosition(m_numCols + 1) - newMove) < 0.00001f))
+		{
+			illegalMove = true;
+			break;
+		}
+
+		if (m_occupiedBlocks[GetXIndex(xPos)][GetYIndex(yPos)])
+		{
+			illegalMove = true;
+			break;
+		}
+	}
+
+	return false;
+}
+
+bool Board::ValidMoveVertical(float xPos, float yPos)
+{
+
+	return false;
+}
+
 void Board::Move()
 {
 	if (m_currentPieceIndex == 0)
@@ -118,21 +155,29 @@ void Board::Move()
 		m_timer = std::chrono::system_clock::now();
 	}
 
+
 	// Move in the x direction if necessary.
 	if (m_moveX != 0)
 	{
 		bool illegalMove = false;
-		for (int i = m_currentPieceIndex; i < (m_vertices.size()); i += c_NUM_ELEMENTS_PER_VERT)
+		for (int i = m_currentPieceIndex; i < (m_vertices.size()); i += (c_NUM_ELEMENTS_PER_VERT * 4))
 		{
 			float newMove = m_vertices[i] + (m_block_length * m_moveX);
-			float val = m_RightXCord + m_block_length;
-			if (newMove < GetXPosition(0) || (abs(GetXPosition(m_numCols + 1) - newMove) < 0.00001f))
+			
+			// Make sure the move is not out of bounds and there are not already pieces there.
+			if (newMove < GetXPosition(0) || newMove > GetXPosition(m_numCols - 1))
 			{
 				illegalMove = true;
 				break;
 			}
+			else if (m_occupiedBlocks[GetYIndex(m_vertices[i + 1])][GetXIndex(newMove)])
+			{
+				illegalMove = true;
+			}
+
 		}
 
+		// Move the piece in the x direction if the move is legal.
 		if (!illegalMove) 
 		{
 			for (int i = m_currentPieceIndex; i < (m_vertices.size()); i += c_NUM_ELEMENTS_PER_VERT)
@@ -140,6 +185,7 @@ void Board::Move()
 				m_vertices[i] += m_block_length * m_moveX;
 			}
 		}
+
 		m_moveX = 0;
 	}
 
@@ -148,19 +194,39 @@ void Board::Move()
 	{
 		bool illegalMove = false;
 
-		for (int i = m_currentPieceIndex; i < (m_vertices.size()); i += c_NUM_ELEMENTS_PER_VERT)
+		for (int i = m_currentPieceIndex; i < (m_vertices.size()); i += (c_NUM_ELEMENTS_PER_VERT * 4))
 		{
-			m_vertices[i + 1] += m_block_length * m_moveY;
+			float newY = m_vertices[i + 1] + (m_block_length * m_moveY);
 			
-			// Check to see if the next space is the bottom.
-			if (m_vertices[i + 1] < GetYPosition(m_numRows - 1))
+			// Check to see if the next row is the last row or there is already a piece on that row.
+			if (newY < GetYPosition(m_numRows - 1))
+			{
+				illegalMove = true;
+			}
+			else if (m_occupiedBlocks[GetYIndex(newY)][GetXIndex(m_vertices[i])])
 			{
 				illegalMove = true;
 			}
 		}
 
+		if (!illegalMove)
+		{
+			for (int i = m_currentPieceIndex; i < (m_vertices.size()); i += c_NUM_ELEMENTS_PER_VERT)
+			{
+				m_vertices[i + 1] += m_block_length * m_moveY;
+			}
+			m_moveY = 0;
+		}
+
 		if (illegalMove)
 		{
+			// Occupy the spaces.
+			for (int i = m_currentPieceIndex; i < (m_vertices.size()); i += (c_NUM_ELEMENTS_PER_VERT * 4))
+			{
+				int yval = GetYIndex(m_vertices[i + 1]);
+				m_occupiedBlocks[GetYIndex(m_vertices[i + 1])][GetXIndex(m_vertices[i])] = true;
+			}
+
 			m_ActivePiece = false;
 			m_currentPieceIndex = 0;
 		}
@@ -183,6 +249,9 @@ void Board::Move()
 		block_origin[0] = ((m_vertices[start + c_NUM_ELEMENTS_PER_VERT] - m_vertices[start])) + m_vertices[start];
 		block_origin[1] = ((m_vertices[start + 1 + c_NUM_ELEMENTS_PER_VERT] - m_vertices[start + 1])) + m_vertices[start + 1];
 
+		float new_verts[4 * 2 * 4] = { 0 };
+
+		int j = 0;
 		for (int i = m_currentPieceIndex; i < (m_vertices.size()); i += c_NUM_ELEMENTS_PER_VERT)
 		{
 			float prev_x = m_vertices[i] - block_origin[0];
@@ -191,22 +260,41 @@ void Board::Move()
 			float new_x = (-prev_y  + block_origin[0]);
 			float new_y = (prev_x + block_origin[1]);
 			
-			m_vertices[i] = new_x;
-			m_vertices[i + 1] = new_y;
-			
-			// Check to see if this is a valid roation or move the piece back into the board
+			new_verts[j] = new_x;
+			new_verts[j + 1] = new_y;
+
+			// TODO: Check to see if this is a valid roation or move the piece back into the board
 			// so the player can still rotate.
 			
+
+
+
 			
-			// Check if out of bounds horizontally
-
-
 			// Check if it will hit any other pieces.
 			if (m_vertices[i + 1] < GetYPosition(m_numRows - 1))
 			{
 				illegalMove = true;
 			}
+
+			j += 2;
+
 		}
+
+
+		if (!illegalMove)
+		{
+			// Sort the blocks, so the upper right corner is the first vertex.
+
+
+			j = 0;
+			for (int i = m_currentPieceIndex; i < (m_vertices.size()); i += c_NUM_ELEMENTS_PER_VERT)
+			{
+				m_vertices[i] = new_verts[j];
+				m_vertices[i + 1] = new_verts[j + 1];
+				j += 2;
+			}
+		}
+
 
 		m_FlipPiece = false;
 	}
@@ -282,7 +370,7 @@ void Board::CreateBlock(float xPos, float yPos, float r, float g, float b)
 
 float Board::GetXPosition(int x)
 {
-	return (m_LeftXCord + m_block_length) + (float(x) * m_block_length);
+	return (m_LeftXCord + m_block_length) + (x * m_block_length);
 }
 
 float Board::GetYPosition(int y)
@@ -290,8 +378,20 @@ float Board::GetYPosition(int y)
 	return 1.0f - (y * m_block_length);
 }
 
+unsigned int Board::GetXIndex(float x)
+{
+	return (x - m_LeftXCord -  m_block_length) / m_block_length;
+}
+
+unsigned int Board::GetYIndex(float y)
+{
+	// Need to round to not loose data from converting to unsinged int occasionally.
+	return  round((y - 1.0f) / (-m_block_length));
+}
+
 void Board::CreatePiece(const char piece_type)
 {
+
 	switch (piece_type)
 	{
 	case 'O':

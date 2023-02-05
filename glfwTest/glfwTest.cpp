@@ -196,8 +196,6 @@ int main()
 	while (!glfwWindowShouldClose(window)) {
 		glClear(GL_COLOR_BUFFER_BIT);
 		
-		
-		
 		board.Render();
 
 		//* Poll for and process events *
