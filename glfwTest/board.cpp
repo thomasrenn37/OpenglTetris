@@ -2,7 +2,7 @@
 #include <iostream>
 #include <chrono>
 #include <cstdlib>
-#include <math.h>
+#include <queue>
 
 #define GLEW_STATIC // Need to define to be able to statically link.
 #include <glew.h>
@@ -11,7 +11,7 @@
 #include "Texture.h"
 #include "shader.h"
 
-Board::Board(int width, int height)
+Board::Board(GLFWwindow *window, int width, int height)
 {
 	// Set each block to be unoccupied.
 	for (int i = 0; i < m_numRows; i++)
@@ -21,6 +21,8 @@ Board::Board(int width, int height)
 			m_occupiedBlocks[i][j] = false;
 		}
 	}
+
+	m_window = window;
 
 
 	m_block_length = 2.f / (m_numRows + 1);
@@ -40,6 +42,8 @@ Board::Board(int width, int height)
 	this->createSides(m_LeftXCord);
 	this->createSides(m_RightXCord);
 	this->createBottom(m_LeftXCord + m_block_length);
+	
+	m_firstPieceIndex = m_vertices.size();
 
 	/* ---------- Generate the handles to the opengl objects ------------ */
 	
@@ -92,6 +96,7 @@ void Board::Render()
 	m_shaderProg.use();
 	glUniform1i(glGetUniformLocation(m_shaderProg.program(), "blockTexture"), 0);
 	glBindVertexArray(m_vao);
+	glNamedBufferData(m_bufferHandle, sizeof(float) * numVertices(), getVertexPointer(), GL_STREAM_DRAW);
 	glDrawElements(GL_TRIANGLES, numVertices(), GL_UNSIGNED_INT, 0);
 	glBindVertexArray(0);
 
@@ -174,10 +179,15 @@ void Board::Move()
 			{
 				illegalMove = true;
 			}
+			else if (m_moveY > 1 && !m_occupiedBlocks[GetYIndex(m_moveY / 2)][GetXIndex(m_vertices[i])])
+			{
+				newY = m_vertices[i + 1] + (m_block_length * (m_moveY / 2));
+			}
 			else if (m_occupiedBlocks[GetYIndex(newY)][GetXIndex(m_vertices[i])])
 			{
 				illegalMove = true;
 			}
+			
 		}
 
 		if (!illegalMove)
@@ -198,6 +208,27 @@ void Board::Move()
 				m_occupiedBlocks[GetYIndex(m_vertices[i + 1])][GetXIndex(m_vertices[i])] = true;
 			}
 
+			// Check if there is a full line to erase
+			for (unsigned int row = 0; row < m_numRows; row++)
+			{
+				bool deleteRow = true;
+				for (unsigned int col = 0; col < m_numCols; col++)
+				{
+					if (!m_occupiedBlocks[row][col])
+					{
+						deleteRow = false;
+						break;
+					}
+				}
+
+				if (deleteRow)
+				{
+					// Delete the row that are full and shift the rest of the rows down.
+					DeleteRow(row);
+				}
+			}
+
+
 			m_ActivePiece = false;
 			m_currentPieceIndex = 0;
 		}
@@ -217,9 +248,11 @@ void Board::Move()
 		// Use the first 3 vertices to calculate origin, first x0 - x1, then y1 - y2
 		// Get the roation x and y origins.
 		float block_origin[2];
-		block_origin[0] = m_vertices[start];
-		block_origin[1] = m_vertices[start + 1];
-		
+		block_origin[0] = m_vertices[start] + m_block_length;
+		block_origin[1] = m_vertices[start + 1] - m_block_length;
+		//block_origin[0] = m_vertices[start];
+		//block_origin[1] = m_vertices[start + 1];
+
 		// 4 vertieces * 2 vertex data * 4 number of blocks per piece
 		float new_verts[32] = { 0 };
 
@@ -247,18 +280,14 @@ void Board::Move()
 				break;
 			}
 			
-			// Check if it will hit any other pieces.
-			if (m_vertices[i + 1] < GetYPosition(m_numRows - 1))
-			{
-				illegalMove = true;
-			}
-
 			j += 2;
 		}
 
 
 		if (!illegalMove)
 		{
+			//PrintOccupied();
+
 			// Rotation counter-clockwise messes up the drawing order of the vertices,
 			// and therefore affects how the blocks are located with the GetIndex functions.
 			// Re-arrange the blocks on how they are drawn
@@ -297,34 +326,102 @@ void Board::Move()
 				m_vertices[i + 1] = new_verts[j + 1];
 				j += 2;
 			}
-		}
 
+
+			// TODO: Check if it will hit any other pieces.
+			/*
+			if (m_vertices[i + 1] < GetYPosition(m_numRows - 1))
+			{
+				illegalMove = true;
+			}
+			*/
+			//PrintOccupied();
+
+
+		}
 		m_FlipPiece = false;
 	}
+}
+
+void Board::DeleteRow(unsigned int row)
+{
+	std::array<unsigned int, m_numCols> deleted_blocks;
+	std::queue<unsigned int> unfound_indices;
 
 
-	// Check if there is a full line to erase
-	for (int i = 0; i < m_numRows; i++)
+	for (unsigned int i = 0; i < m_numCols; i++)
 	{
-		bool deleteRow = true;
-		for (int j = 0; j < m_numCols; j++)
-		{
-			if (!m_occupiedBlocks[i][j])
-			{
-				deleteRow = false;
-				break;
-			}
-		}
+		unfound_indices.push(i);
+	}
+	
+	// go through and find all of the blocks in the deletion row
+	int block = 0;
+	unsigned int search_idx = unfound_indices.front();
 
-		if (deleteRow)
+	while (!unfound_indices.empty())
+	{
+		for (unsigned int i = m_firstPieceIndex; i < m_vertices.size(); i += c_NUM_ELEMENTS_PER_VERT * 4)
 		{
-			// Delete the row and shift the rest of the rows down.
+			// Add the location of the zeroed data to the array
+			if ((GetXIndex(m_vertices[i]) == unfound_indices.front()) && (GetYIndex(m_vertices[i + 1]) == row))
+			{
+				deleted_blocks[block++] = i;
+				unfound_indices.pop();
+
+				if (unfound_indices.empty())
+				{
+					break;
+				}
+			}
 		}
 	}
 
-	glNamedBufferData(m_bufferHandle, sizeof(float) * numVertices(), getVertexPointer(), GL_STREAM_DRAW);
-}
+	// Sort the indexes in deleted_blocks.
+	std::sort(deleted_blocks.begin(), deleted_blocks.end());
 
+	// Update the vertex buffer to remove the empty gaps in memory to avoid infinite
+	// allocation of memory. Loop in reverse because erase resizes the buffer once
+	// the values are removed.
+	for (int i = (deleted_blocks.size() - 1) ; i > -1; i--)
+	{
+		// Get the insertion point and all the values before the next deleted blocks location.
+		unsigned int insertion_point = deleted_blocks[i];
+
+		// Get the end of all the deleted block. number of vertices * number of elements per vertex.
+		unsigned int valid_blocks_start = deleted_blocks[i] + 4 * c_NUM_ELEMENTS_PER_VERT;
+
+		m_vertices.erase(m_vertices.begin() + insertion_point, m_vertices.begin() + valid_blocks_start);
+	}
+	
+	// Update the locations of the blocks.
+	for (int i = m_firstPieceIndex; i < m_vertices.size(); i+= c_NUM_ELEMENTS_PER_VERT * 4)
+	{
+		//bool occupied = m_occupiedBlocks[GetYIndex(m_vertices[i + 1])][GetXIndex(m_vertices[i])];
+		if ((m_vertices[i + 1] > GetYPosition(row)))
+		{
+			// Move the piece down one square ????
+			for (unsigned int j = 0; j < 4; j++)
+			{
+				float val = GetYPosition(GetYIndex(m_vertices[i + (c_NUM_ELEMENTS_PER_VERT * j) + 1]) + 1);
+				m_vertices[i + (c_NUM_ELEMENTS_PER_VERT * j) + 1] = val;
+			}
+		}
+	}
+
+	// Remove all previous occupied blocks.
+	for (unsigned int i = 0; i < m_numRows; i++)
+		for (unsigned int j = 0; j < m_numCols; j++)
+			m_occupiedBlocks[i][j] = false;
+
+	// Set the new location to occupied
+	for (int i = m_firstPieceIndex; i < m_vertices.size(); i += c_NUM_ELEMENTS_PER_VERT * 4)
+		m_occupiedBlocks[GetYIndex(m_vertices[i + 1])][GetXIndex(m_vertices[i])] = true;
+
+
+	// TODO: Add score
+
+
+}
 
 void Board::PrintOccupied()
 {
@@ -339,8 +436,6 @@ void Board::PrintOccupied()
 	}
 
 	std::cout << "\n================================\n";
-	m_ActivePiece = false;
-	m_currentPieceIndex = 0;
 }
 
 

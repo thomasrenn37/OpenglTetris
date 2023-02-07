@@ -184,7 +184,7 @@ int main()
 
 
 	// Create and initialize the buffer
-	Board board(width, height);
+	Board board(window, width, height);
 	glfwSetWindowUserPointer(window, &board);
 
 	std::cout << "Num vertices: " << board.numVertices() << std::endl;
@@ -196,10 +196,12 @@ int main()
 	while (!glfwWindowShouldClose(window)) {
 		glClear(GL_COLOR_BUFFER_BIT);
 		
-		board.Render();
-
 		//* Poll for and process events *
 		glfwPollEvents();
+
+		board.Render();
+
+		
 
 		///* Swap front and back buffers *
 		glfwSwapBuffers(window);
