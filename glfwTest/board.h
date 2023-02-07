@@ -15,7 +15,7 @@ public:
 	void SpawnPiece();
 	float* getVertexPointer();
 	unsigned int* getIndexPointer();
-	size_t numVertices();
+	unsigned int numVertices();
 	size_t numIndices();
 	void SetMoveDirection(int x, int y);
 	void Flip();

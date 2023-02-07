@@ -40,7 +40,7 @@ Board::Board(int width, int height)
 	this->createSides(m_RightXCord);
 	this->createBottom(m_LeftXCord + m_block_length);
 	
-	m_firstPieceIndex = m_vertices.size();
+	m_firstPieceIndex = static_cast<unsigned int>(m_vertices.size());
 
 	/* ---------- Generate the handles to the opengl objects ------------ */
 	
@@ -93,7 +93,7 @@ void Board::Render()
 	glUniform1i(glGetUniformLocation(m_shaderProg.program(), "blockTexture"), 0);
 	glBindVertexArray(m_vao);
 	glNamedBufferData(m_bufferHandle, sizeof(float) * numVertices(), getVertexPointer(), GL_STREAM_DRAW);
-	glDrawElements(GL_TRIANGLES, numVertices(), GL_UNSIGNED_INT, 0);
+	glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(numVertices()), GL_UNSIGNED_INT, 0);
 	glBindVertexArray(0);
 
 	if (!m_ActivePiece)
@@ -124,7 +124,7 @@ void Board::Update()
 	std::chrono::duration<float> elapsed_seconds = std::chrono::system_clock::now() - m_timer;
 	if (elapsed_seconds.count() > 0.5f)
 	{
-		m_moveY = -1.0f + m_moveY;
+		m_moveY = -1 + m_moveY;
 		m_timer = std::chrono::system_clock::now();
 	}
 
@@ -294,7 +294,7 @@ void Board::Update()
 			new_verts[j] = new_x;
 			new_verts[j + 1] = new_y;
 
-			// Check to see if the player is in bounds.
+			// Check to see if the player is in bounds and the block is not occupied.
 			if (GetXIndex(new_verts[j]) < 0 || GetXIndex(new_verts[j]) > (m_numCols - 1))
 			{
 				illegalMove = true;
@@ -305,7 +305,11 @@ void Board::Update()
 				illegalMove = true;
 				break;
 			}
-			
+			else if (m_occupiedBlocks[GetYIndex(new_y)][GetXIndex(new_x)])
+			{
+				illegalMove = true;
+				break;
+			}
 			j += 2;
 		}
 
@@ -349,21 +353,9 @@ void Board::Update()
 			for (int i = m_currentPieceIndex; i < (m_vertices.size()); i += c_NUM_ELEMENTS_PER_VERT)
 			{
 				m_vertices[i] = new_verts[j];
-				m_vertices[i + 1] = new_verts[j + 1];
+				m_vertices[i + 1] = new_verts[j + 1]; 
 				j += 2;
 			}
-
-
-			// TODO: Check if it will hit any other pieces.
-			/*
-			if (m_vertices[i + 1] < GetYPosition(m_numRows - 1))
-			{
-				illegalMove = true;
-			}
-			*/
-			//PrintOccupied();
-
-
 		}
 		m_FlipPiece = false;
 	}
@@ -408,7 +400,7 @@ void Board::DeleteRow(unsigned int row)
 	// Update the vertex buffer to remove the empty gaps in memory to avoid infinite
 	// allocation of memory. Loop in reverse because erase resizes the buffer once
 	// the values are removed.
-	for (int i = (deleted_blocks.size() - 1) ; i > -1; i--)
+	for (int i = (static_cast<int>(deleted_blocks.size() - 1)) ; i > -1; i--)
 	{
 		// Get the insertion point and all the values before the next deleted blocks location.
 		unsigned int insertion_point = deleted_blocks[i];
@@ -475,7 +467,7 @@ void Board::createSides(float xPos)
 
 void Board::CreateBlock(float xPos, float yPos, float r, float g, float b)
 {
-	unsigned int vert_idx = m_vertices.size() / c_NUM_ELEMENTS_PER_VERT;
+	unsigned int vert_idx = numVertices() / c_NUM_ELEMENTS_PER_VERT;
 
 	// Update the Vertex Buffer
 	// Top left
@@ -639,10 +631,10 @@ void Board::SpawnPiece()
 	int blockVerts = 4;
 	int numInsert = numBlocks * blockVerts * 4;
 
-	m_currentPieceIndex = m_vertices.size();
+	m_currentPieceIndex = numVertices();
 
 	char pieces[] = "OIJLSTZ";
-	srand(time(NULL));
+	srand(static_cast<unsigned int>(time(NULL)));
 	CreatePiece(pieces[rand() % 7]);
 	
 	// Swap out the new data.
@@ -654,9 +646,9 @@ void Board::SpawnPiece()
 	static auto m_time = std::chrono::system_clock::now();
 }
 
-size_t Board::numVertices()
+unsigned int Board::numVertices()
 {
-	return m_vertices.size();
+	return static_cast<unsigned int>(m_vertices.size());
 }
 
 size_t Board::numIndices()
@@ -678,7 +670,7 @@ void Board::Flip()
 void Board::Drop()
 {
 	if (m_ActivePiece)
-		m_moveY = -(m_numRows - 1);
+		m_moveY = -(static_cast<int>(m_numRows) - 1);
 }
 
 float* Board::getVertexPointer()
