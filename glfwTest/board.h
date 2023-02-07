@@ -10,6 +10,7 @@ class Board
 public:
 	Board(int width, int height);
 	~Board();
+	void Update();
 	void Render();
 	void SpawnPiece();
 	float* getVertexPointer();
@@ -46,7 +47,6 @@ private:
 	GLuint m_bufferHandle, m_vao, m_ebo;
 	float m_block_length;
 
-	void Move();
 	void DeleteRow(unsigned int row);
 	void PrintOccupied();
 	unsigned int m_currentPieceIndex;

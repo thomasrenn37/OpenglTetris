@@ -2,7 +2,6 @@
 //
 
 #include <iostream>
-#include <math.h>
 
 // OpenGL libraries and extensitons.
 #include "glfwTest.h"
@@ -10,12 +9,6 @@
 #include <glew.h>
 #include <glfw3.h>
 
-
-#include <chrono>
-#include <thread>
-
-
-#include "vertex2d.h"
 #include "board.h"
 
 void error_callback(int error, const char* description)
@@ -170,13 +163,6 @@ void cleanupGLFW(GLFWwindow* window)
 	glfwTerminate();
 }
 
-
-void calcOffset(Vector2D* current, Vector2D* result, float radians)
-{
-	result->x = (current->x * cosf(radians)) - (current->y * sinf(radians));
-	result->y = (current->x * sinf(radians)) + (current->y * cosf(radians));
-}
-
 int main()
 {
 	GLFWwindow* window;
@@ -201,14 +187,16 @@ int main()
 	while (!glfwWindowShouldClose(window)) {
 		glClear(GL_COLOR_BUFFER_BIT);
 		
-		//* Poll for and process events *
+		// Poll for and process events 
 		glfwPollEvents();
 
+		// Update the board
+		board.Update();
+
+		// Render to the screen
 		board.Render();
 
-		
-
-		///* Swap front and back buffers *
+		// Swap front and back buffers 
 		glfwSwapBuffers(window);
 	}
 

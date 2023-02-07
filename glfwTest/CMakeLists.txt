@@ -17,7 +17,7 @@ find_package(OpenGl REQUIRED)
 
 
 # Add source to this project's executable.
-add_executable (glfwTest glfwTest.cpp glfwTest.h shader.h shader.cpp libs/stb/stb_image.h "vertex2d.cpp" "vertex2d.h" "board.h" "board.cpp" "Texture.cpp" "Texture.h")
+add_executable (glfwTest glfwTest.cpp glfwTest.h shader.h shader.cpp libs/stb/stb_image.h   "board.h" "board.cpp" "Texture.cpp" "Texture.h")
 
 add_library(SHADER STATIC shader.h shader.cpp "Texture.cpp" "Texture.h")
 

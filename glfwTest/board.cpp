@@ -89,7 +89,6 @@ Board::~Board()
 
 void Board::Render()
 {
-	Move();
 	m_shaderProg.use();
 	glUniform1i(glGetUniformLocation(m_shaderProg.program(), "blockTexture"), 0);
 	glBindVertexArray(m_vao);
@@ -111,7 +110,7 @@ void Board::createBottom(float xPos)
 
 
 
-void Board::Move()
+void Board::Update()
 {
 	if (m_currentPieceIndex == 0)
 	{
@@ -632,8 +631,6 @@ void Board::CreatePiece(const char piece_type)
 		break;
 	}
 	}
-
-
 }
 
 void Board::SpawnPiece()
