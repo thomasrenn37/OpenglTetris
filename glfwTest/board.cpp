@@ -11,7 +11,7 @@
 #include "Texture.h"
 #include "shader.h"
 
-Board::Board(GLFWwindow *window, int width, int height)
+Board::Board(int width, int height)
 {
 	// Set each block to be unoccupied.
 	for (int i = 0; i < m_numRows; i++)
@@ -21,9 +21,6 @@ Board::Board(GLFWwindow *window, int width, int height)
 			m_occupiedBlocks[i][j] = false;
 		}
 	}
-
-	m_window = window;
-
 
 	m_block_length = 2.f / (m_numRows + 1);
 	m_LeftXCord = -5.0f * m_block_length;
@@ -174,14 +171,46 @@ void Board::Move()
 		{
 			float newY = m_vertices[i + 1] + (m_block_length * m_moveY);
 			
+			// Check each possible block location from 1 to m_moveY below the current location.
+			if (m_moveY != -1)
+			{
+				int temp = m_moveY;
+
+				// Check if the next block is an illegal move and skip the 
+				// for loop if it is illegal.
+				newY = m_vertices[i + 1] + (-m_block_length);
+				if (newY < GetYPosition(m_numRows - 1))
+				{
+					illegalMove = true;
+				}
+				else if (m_occupiedBlocks[GetYIndex(newY)][GetXIndex(m_vertices[i])])
+				{
+					illegalMove = true;
+				}
+				else 
+				{
+					for (int j = -1; j >= m_moveY; j--)
+					{
+						newY = m_vertices[i + 1] + (m_block_length * j);
+						if (newY < GetYPosition(m_numRows - 1))
+						{
+							break;
+						}
+						else if (m_occupiedBlocks[GetYIndex(newY)][GetXIndex(m_vertices[i])])
+						{
+							break;
+						}
+
+						temp = j;
+					}
+					m_moveY = temp;
+				}
+				
+			}
 			// Check to see if the next row is the last row or there is already a piece on that row.
-			if (newY < GetYPosition(m_numRows - 1))
+			else if (newY < GetYPosition(m_numRows - 1))
 			{
 				illegalMove = true;
-			}
-			else if (m_moveY > 1 && !m_occupiedBlocks[GetYIndex(m_moveY / 2)][GetXIndex(m_vertices[i])])
-			{
-				newY = m_vertices[i + 1] + (m_block_length * (m_moveY / 2));
 			}
 			else if (m_occupiedBlocks[GetYIndex(newY)][GetXIndex(m_vertices[i])])
 			{
@@ -250,8 +279,6 @@ void Board::Move()
 		float block_origin[2];
 		block_origin[0] = m_vertices[start] + m_block_length;
 		block_origin[1] = m_vertices[start + 1] - m_block_length;
-		//block_origin[0] = m_vertices[start];
-		//block_origin[1] = m_vertices[start + 1];
 
 		// 4 vertieces * 2 vertex data * 4 number of blocks per piece
 		float new_verts[32] = { 0 };
@@ -403,7 +430,7 @@ void Board::DeleteRow(unsigned int row)
 			for (unsigned int j = 0; j < 4; j++)
 			{
 				float val = GetYPosition(GetYIndex(m_vertices[i + (c_NUM_ELEMENTS_PER_VERT * j) + 1]) + 1);
-				m_vertices[i + (c_NUM_ELEMENTS_PER_VERT * j) + 1] = val;
+				m_vertices[i + (c_NUM_ELEMENTS_PER_VERT * j) + 1] -=  m_block_length;
 			}
 		}
 	}
@@ -649,6 +676,12 @@ void Board::SetMoveDirection(int x, int y)
 void Board::Flip()
 {
 	m_FlipPiece = true;
+}
+
+void Board::Drop()
+{
+	if (m_ActivePiece)
+		m_moveY = -(m_numRows - 1);
 }
 
 float* Board::getVertexPointer()

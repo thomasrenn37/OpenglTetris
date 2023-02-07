@@ -3,27 +3,12 @@
 #include <array>
 #include <chrono>
 #include "shader.h"
-#define GLEW_STATIC // Need to define to be able to statically link.
-#include <glew.h>
-#include <glfw3.h>
-
-class PlayerPiece
-{
-public:
-	void Flip();
-	void Move(int x, int y);
-
-private:
-	// Coordinates in the Board
-	std::vector<unsigned int> m_XCoords;
-	std::vector<unsigned int> m_YCoords;
-};
 
 
 class Board
 {
 public:
-	Board(GLFWwindow* window, int width, int height);
+	Board(int width, int height);
 	~Board();
 	void Render();
 	void SpawnPiece();
@@ -33,6 +18,7 @@ public:
 	size_t numIndices();
 	void SetMoveDirection(int x, int y);
 	void Flip();
+	void Drop();
 
 private:
 	void createSides(float xPos);
@@ -69,6 +55,4 @@ private:
 	int m_moveX;
 	int m_moveY;
 	float m_moveSpeed;
-
-	GLFWwindow* m_window;
 };

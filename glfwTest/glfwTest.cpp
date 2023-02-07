@@ -47,6 +47,11 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		{
 			board->SetMoveDirection(1, 0);
 		}
+		// Drop the piece
+		else if (key == GLFW_KEY_SPACE)
+		{
+			board->Drop();
+		}
 	}
 	else if (action == GLFW_RELEASE)
 	{
@@ -184,7 +189,7 @@ int main()
 
 
 	// Create and initialize the buffer
-	Board board(window, width, height);
+	Board board(width, height);
 	glfwSetWindowUserPointer(window, &board);
 
 	std::cout << "Num vertices: " << board.numVertices() << std::endl;
