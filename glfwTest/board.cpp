@@ -76,9 +76,11 @@ Board::Board(int width, int height)
 	m_shaderProg.addShader("shaders/frag.glsl", SHADER_TYPE::FRAGMENT_SHADER);
 	m_shaderProg.Link();
 	m_shaderProg.use();
-
+	
 	glBindTexture(GL_TEXTURE_2D, texture);
 	glUniform1i(glGetUniformLocation(m_shaderProg.program(), "blockTexture"), 0);
+
+	std::cout << (unsigned char*)glGetString(GL_VERSION) << std::endl;
 }
 
 Board::~Board()
@@ -89,15 +91,22 @@ Board::~Board()
 
 void Board::Render()
 {
-	m_shaderProg.use();
-	glUniform1i(glGetUniformLocation(m_shaderProg.program(), "blockTexture"), 0);
 	glBindVertexArray(m_vao);
-	glNamedBufferData(m_bufferHandle, sizeof(float) * numVertices(), getVertexPointer(), GL_STREAM_DRAW);
-	glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(numVertices()), GL_UNSIGNED_INT, 0);
-	glBindVertexArray(0);
 
 	if (!m_ActivePiece)
+	{
 		SpawnPiece();
+		glNamedBufferData(m_ebo, sizeof(unsigned int) * numIndices(), getIndexPointer(), GL_STREAM_DRAW);
+	}
+	m_shaderProg.use();
+	glUniform1i(glGetUniformLocation(m_shaderProg.program(), "blockTexture"), 0);
+	glNamedBufferData(m_bufferHandle, sizeof(float) * numVertices(), getVertexPointer(), GL_STREAM_DRAW);
+	glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(numIndices()), GL_UNSIGNED_INT, 0);
+
+	// Block until we are done drawing the elements, avoid swaping to an unfinished frame buffer
+	glFinish();
+
+	glBindVertexArray(0);
 }
 
 void Board::createBottom(float xPos)
@@ -637,10 +646,6 @@ void Board::SpawnPiece()
 	srand(static_cast<unsigned int>(time(NULL)));
 	CreatePiece(pieces[rand() % 7]);
 	
-	// Swap out the new data.
-	glNamedBufferData(m_bufferHandle, sizeof(float) * numVertices(), getVertexPointer(), GL_STREAM_DRAW);
-	glNamedBufferData(m_ebo, sizeof(unsigned int) * numIndices(), getIndexPointer(), GL_STREAM_DRAW);
-
 	m_ActivePiece = true;
 
 	static auto m_time = std::chrono::system_clock::now();

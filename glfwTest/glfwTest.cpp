@@ -195,7 +195,7 @@ int main()
 
 		// Render to the screen
 		board.Render();
-
+		
 		// Swap front and back buffers 
 		glfwSwapBuffers(window);
 	}
