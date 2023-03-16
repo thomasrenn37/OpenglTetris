@@ -178,8 +178,6 @@ int main()
 	Board board(width, height);
 	glfwSetWindowUserPointer(window, &board);
 
-	std::cout << "Num vertices: " << board.numVertices() << std::endl;
-
 	// Wireframe mode
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 

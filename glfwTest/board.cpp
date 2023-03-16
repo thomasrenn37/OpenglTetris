@@ -419,7 +419,11 @@ void Board::DeleteRow(unsigned int row)
 
 		m_vertices.erase(m_vertices.begin() + insertion_point, m_vertices.begin() + valid_blocks_start);
 	}
-	
+
+	// Remove the number of column blocks of indieces that were erased to match the ratio of indices to vertices.
+	// There are 28 vertices and 6 indices that make up one block.
+	m_indices.erase(m_indices.begin() + ((numVertices() * 3) / 14), m_indices.begin() + ((numVertices() * 3) / 14) + (6 * m_numCols));
+
 	// Update the locations of the blocks.
 	for (int i = m_firstPieceIndex; i < m_vertices.size(); i+= c_NUM_ELEMENTS_PER_VERT * 4)
 	{
@@ -446,7 +450,6 @@ void Board::DeleteRow(unsigned int row)
 
 
 	// TODO: Add score
-
 
 }
 
